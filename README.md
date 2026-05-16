@@ -20,7 +20,7 @@ The program is built with Python's built-in Tkinter GUI library.
 - Automatically save task data
 - Load saved tasks when the program opens
 - Simple desktop GUI
-- Simple data encryption (NOTE: This encryption uses SHA256 Hasing and XOR encryption and decryption. Users should not expect the  ir data to be safe.)
+- Simple data encryption (NOTE: This encryption uses SHA256 Hashing and XOR encryption and decryption. Users should not expect their data to be safe.)
 
 ## Requirements
 
