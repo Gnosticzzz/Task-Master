@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import tkinter as tk
 import json
 import hashlib
@@ -400,6 +402,15 @@ def show_tasks_due_today():
 
     messagebox.showinfo("Tasks Due Today", message, parent=root)
 
+def show_tasks_due_today_after_root_loads():
+    if not root.winfo_viewable():
+        root.after(50, show_tasks_due_today_after_root_loads)
+        return
+
+    root.lift()
+    root.focus_force()
+    show_tasks_due_today()
+
 def start_drag(event):
     global drag_start_index
 
@@ -472,6 +483,7 @@ def main():
     task_listbox.bind("<B1-Motion>", drag_task)
     task_listbox.bind("<ButtonRelease-1>", stop_drag)
     task_listbox.bind("<Double-Button-1>", open_task_notes)
+    task_listbox.bind("d", delete_task)
 
     load_tasks()
     root.after(100, show_tasks_due_today)
@@ -506,7 +518,7 @@ def main():
     update_counter_button = tk.Button(counter_frame, text="Update", font=("Arial", 12), command=update_counter_manual)
     update_counter_button.pack(side="left", padx=5)
 
-    root.bind("d", delete_task)
+    show_tasks_due_today_after_root_loads()
 
     root.mainloop()
 
