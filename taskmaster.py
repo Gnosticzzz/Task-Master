@@ -222,7 +222,7 @@ def load_tasks():
         completed_tasks = 0
         print("Could not load JSON. Wrong password or corrupted file.")
 
-def mark_completed():
+def mark_completed(event=None):
     global completed_tasks
 
     selected = task_listbox.curselection()
@@ -628,6 +628,7 @@ def main():
     task_listbox.bind("<ButtonRelease-1>", stop_drag)
     task_listbox.bind("<Double-Button-1>", open_task_notes)
     task_listbox.bind("d", delete_task)
+    task_listbox.bind("m", mark_completed)
 
     load_tasks()
     root.after(100, show_tasks_due_today)
