@@ -9,6 +9,7 @@ from tkinter import simpledialog, messagebox
 
 APP_FOLDER = os.path.join(os.path.expanduser("~"), ".local", "share", "taskmaster")
 TASKS_FILE = os.path.join(APP_FOLDER, "tasks.json")
+COMPLETED_TASKS_FILE = os.path.join(APP_FOLDER, "completed_tasks.json")
 os.makedirs(APP_FOLDER, exist_ok=True)
 
 tasks = []
@@ -40,7 +41,7 @@ def add_task_notes(description):
     notes_frame = tk.Frame(window)
     notes_frame.grid(row=2, column=1, padx=10, pady=8)
 
-    notes_text = tk.Text(notes_frame, font=("Arial", 12), width=25, height=5)
+    notes_text = tk.Text(notes_frame, font=("Arial", 12), width=25, height=5, wrap="word")
     notes_text.pack(side="left", fill="both", expand=True)
 
     notes_scrollbar = tk.Scrollbar(notes_frame, command=notes_text.yview)
@@ -177,6 +178,23 @@ def load_encrypted_data(filename, password):
 
     return data
 
+def load_completed_tasks():
+    try:
+        data = load_encrypted_data(COMPLETED_TASKS_FILE, MASTER_PASSWORD)
+        return data.get("completed_tasks", [])
+
+    except FileNotFoundError:
+        print("File not found")
+        return []
+
+    except UnicodeDecodeError:
+        print("Could not decrypt completed tasks file. Wrong password or corrupted file.")
+        return []
+
+    except json.JSONDecodeError:
+        print("Could not load completed tasks JSON. Wrong password or corrupted file.")
+        return []
+
 def load_tasks():
     global tasks
     global completed_tasks
@@ -213,6 +231,10 @@ def mark_completed():
         return
 
     index = selected[0]
+
+    task = tasks[index]
+
+    save_completed_task(task)
 
     task_listbox.delete(index)
     tasks.pop(index)
@@ -280,7 +302,7 @@ def open_task_notes(event=None):
     notes_frame = tk.Frame(window)
     notes_frame.grid(row=3, column=1, padx=10, pady=8)
 
-    notes_text = tk.Text(notes_frame, font=("Arial", 12), width=25, height=6)
+    notes_text = tk.Text(notes_frame, font=("Arial", 12), width=25, height=6, wrap="word")
     notes_text.pack(side="left", fill="both", expand=True)
 
     notes_scrollbar = tk.Scrollbar(notes_frame, command=notes_text.yview)
@@ -366,6 +388,28 @@ def save_encrypted_data(data, filename, password):
     with open(filename, "wb") as file:
         file.write(salt + encrypted_bytes)
 
+def save_completed_tasks(completed_task_list):
+    data = {
+        "completed_tasks": completed_task_list
+    }
+
+    save_encrypted_data(data, COMPLETED_TASKS_FILE, MASTER_PASSWORD)
+
+def save_completed_task(task):
+    completed_task_list = load_completed_tasks()
+
+    completed_task = {
+        "description": task.get("description", ""),
+        "date": task.get("date", ""),
+        "time": task.get("time", ""),
+        "notes": task.get("notes", ""),
+        "completed_on": datetime.now().isoformat(timespec="seconds")
+    }
+
+    completed_task_list.append(completed_task)
+
+    save_completed_tasks(completed_task_list)
+
 def save_tasks():
     data = {
         "completed_tasks": completed_tasks,
@@ -373,6 +417,106 @@ def save_tasks():
     }
 
     save_encrypted_data(data, TASKS_FILE, MASTER_PASSWORD)
+
+def show_completed_tasks():
+    completed_task_list = load_completed_tasks()
+
+    window = tk.Toplevel(root)
+    window.title("Completed Tasks")
+    window.geometry("500x400")
+
+    window.transient(root)
+    window.grab_set()
+    window.focus_set()
+
+    tk.Label(
+        window,
+        text="Double-click a completed task to see its details.",
+        font=("Arial", 12)
+    ).pack(pady=5)
+
+    listbox_frame = tk.Frame(window)
+    listbox_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+    completed_listbox = tk.Listbox(
+        listbox_frame,
+        font=("Arial", 12),
+        width=50,
+        height=15
+    )
+    completed_listbox.pack(side="left", fill="both", expand=True)
+
+    completed_scrollbar = tk.Scrollbar(listbox_frame, command=completed_listbox.yview)
+    completed_scrollbar.pack(side="right", fill="y")
+
+    completed_listbox.config(yscrollcommand=completed_scrollbar.set)
+
+    if completed_task_list == []:
+        completed_listbox.insert(tk.END, "No completed tasks yet.")
+        completed_listbox.config(state="disabled")
+    else:
+        for task in completed_task_list:
+            description = task.get("description", "")
+            completed_listbox.insert(tk.END, description)
+
+    def open_completed_task_details(event=None):
+        selected = completed_listbox.curselection()
+
+        if selected == ():
+            return
+
+        index = selected[0]
+        task = completed_task_list[index]
+
+        details_window = tk.Toplevel(window)
+        details_window.title("Completed Task Details")
+        details_window.geometry("500x400")
+
+        details_window.transient(window)
+        details_window.wait_visibility()
+        details_window.grab_set()
+        details_window.focus_set()
+
+        text_frame = tk.Frame(details_window)
+        text_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        details_text = tk.Text(
+            text_frame,
+            font=("Arial", 12),
+            width=45,
+            height=15,
+            wrap="word"
+        )
+        details_text.pack(side="left", fill="both", expand=True)
+
+        details_scrollbar = tk.Scrollbar(text_frame, command=details_text.yview)
+        details_scrollbar.pack(side="right", fill="y")
+
+        details_text.config(yscrollcommand=details_scrollbar.set)
+
+        description = task.get("description", "")
+        task_date = task.get("date", "")
+        task_time = task.get("time", "")
+        notes = task.get("notes", "")
+        completed_on = task.get("completed_on", "")
+
+        details_text.insert(tk.END, f"Task: {description}\n\n")
+
+        if task_date != "":
+            details_text.insert(tk.END, f"Original Date: {task_date}\n")
+
+        if task_time != "":
+            details_text.insert(tk.END, f"Original Time: {task_time}\n")
+
+        if completed_on != "":
+            details_text.insert(tk.END, f"Completed On: {completed_on}\n")
+
+        if notes != "":
+            details_text.insert(tk.END, f"\nNotes:\n{notes}\n")
+
+        details_text.config(state="disabled")
+
+    completed_listbox.bind("<Double-Button-1>", open_completed_task_details)
 
 def show_tasks_due_today():
     today = date.today().isoformat()
@@ -466,7 +610,7 @@ def main():
 
     root = tk.Tk()
     root.title("Task Master")
-    root.geometry("500x450")
+    root.geometry("500x500")
     root.resizable(False, False)
 
     listbox_frame = tk.Frame(root)
@@ -517,6 +661,9 @@ def main():
 
     update_counter_button = tk.Button(counter_frame, text="Update", font=("Arial", 12), command=update_counter_manual)
     update_counter_button.pack(side="left", padx=5)
+
+    completed_button = tk.Button(root, text="Show Completed Tasks", font=("Arial", 12), command=show_completed_tasks)
+    completed_button.pack(pady=5)
 
     show_tasks_due_today_after_root_loads()
 
