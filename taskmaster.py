@@ -457,7 +457,7 @@ def show_completed_tasks():
     else:
         for task in completed_task_list:
             description = task.get("description", "")
-            completed_listbox.insert(tk.END, description)
+            completed_listbox.insert(0, description)
 
     def open_completed_task_details(event=None):
         selected = completed_listbox.curselection()
