@@ -423,7 +423,7 @@ def show_completed_tasks():
 
     window = tk.Toplevel(root)
     window.title("Completed Tasks")
-    window.geometry("500x400")
+    window.geometry("500x500")
 
     window.transient(root)
     window.grab_set()
@@ -432,6 +432,12 @@ def show_completed_tasks():
     tk.Label(
         window,
         text="Double-click a completed task to see its details.",
+        font=("Arial", 12)
+    ).pack(pady=5)
+
+    tk.Label(
+        window,
+        text="Press 'd' to delete a selected completed task.",
         font=("Arial", 12)
     ).pack(pady=5)
 
@@ -451,13 +457,58 @@ def show_completed_tasks():
 
     completed_listbox.config(yscrollcommand=completed_scrollbar.set)
 
-    if completed_task_list == []:
+    displayed_completed_tasks = list(reversed(completed_task_list))
+
+    if displayed_completed_tasks == []:
         completed_listbox.insert(tk.END, "No completed tasks yet.")
         completed_listbox.config(state="disabled")
     else:
-        for task in completed_task_list:
+        for task in displayed_completed_tasks:
             description = task.get("description", "")
-            completed_listbox.insert(0, description)
+            completed_listbox.insert(tk.END, description)
+
+    def delete_completed_task(event=None):
+        selected = completed_listbox.curselection()
+
+        if selected == ():
+            messagebox.showinfo(
+                "No Task Selected",
+                "Please select a completed task to delete.",
+                parent=window
+            )
+            return
+
+        index = selected[0]
+
+        answer = messagebox.askyesno(
+            "Delete Completed Task",
+            "Are you sure you want to delete this completed task?",
+            parent=window
+        )
+
+        if not answer:
+            return
+
+        original_index = len(completed_task_list) - 1 - index
+
+        completed_listbox.delete(index)
+
+        del completed_task_list[original_index]
+        del displayed_completed_tasks[index]
+
+        save_completed_tasks(completed_task_list)
+
+        if displayed_completed_tasks == []:
+            completed_listbox.insert(tk.END, "No completed tasks yet.")
+            completed_listbox.config(state="disabled")
+
+    delete_button = tk.Button(
+        window,
+        text="Delete Completed Task",
+        font=("Arial", 12),
+        command=delete_completed_task
+    )
+    delete_button.pack(pady=5)
 
     def open_completed_task_details(event=None):
         selected = completed_listbox.curselection()
@@ -466,7 +517,7 @@ def show_completed_tasks():
             return
 
         index = selected[0]
-        task = completed_task_list[index]
+        task = displayed_completed_tasks[index]
 
         details_window = tk.Toplevel(window)
         details_window.title("Completed Task Details")
@@ -517,6 +568,8 @@ def show_completed_tasks():
         details_text.config(state="disabled")
 
     completed_listbox.bind("<Double-Button-1>", open_completed_task_details)
+
+    completed_listbox.bind("d", delete_completed_task)
 
 def show_tasks_due_today():
     today = date.today().isoformat()
